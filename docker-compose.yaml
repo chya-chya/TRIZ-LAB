@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:latest
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=TRIZLAB
+    volumes:
+      - TRIZLAB_postgres_data:/var/lib/postgresql
+    healthcheck: # 여기 추가!
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-TRIZLAB}',
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+  mongo:
+    image: mongo:latest
+    ports:
+      - '27017:27017'
+    volumes:
+      - TRIZLAB_mongo_data:/data/db
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - '3000:3000'
+      - '5555:5555'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/TRIZLAB?schema=public
+      - PORT=3000
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-access-secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-refresh-secret}
+
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npx prisma generate && npm run start:dev"
+volumes:
+  TRIZLAB_postgres_data:
+  TRIZLAB_mongo_data:

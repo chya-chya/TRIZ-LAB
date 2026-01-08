@@ -1,0 +1,218 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  password String
+  nickname String
+  profile  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  problems Problem[]
+  attempts Attempt[]
+  comments Comment[]
+
+  refreshTokens    RefreshToken[]
+  learningProgress LearningProgress[]
+
+  problemLikes      ProblemLike[]
+  attemptLikes      AttemptLike[]
+  givenUserLikes    UserLike[]    @relation("GivenUserLikes")
+  receivedUserLikes UserLike[]    @relation("ReceivedUserLikes")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Problem {
+  id               String @id @default(uuid())
+  title            String
+  content          String
+  currentSituation String
+  idealResult      String
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  attempts   Attempt[]
+  likes      ProblemLike[]
+  challenges Challenge[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProblemLike {
+  id String @id @default(uuid())
+
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([problemId, userId])
+}
+
+model Attempt {
+  id String @id @default(uuid())
+
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id])
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  improveFactor    String
+  constraintFactor String
+  contradiction    String
+
+  solutionIdea String
+  risks        String?
+
+  principles        AttemptPrinciple[]
+  likes             AttemptLike[]
+  comments          Comment[]
+  challengeAttempts ChallengeAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AttemptPrinciple {
+  attemptId String
+  principle String
+
+  attempt Attempt @relation(fields: [attemptId], references: [id])
+
+  @@id([attemptId, principle])
+}
+
+model AttemptLike {
+  id String @id @default(uuid())
+
+  attemptId String
+  attempt   Attempt @relation(fields: [attemptId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([attemptId, userId])
+}
+
+model Comment {
+  id      String @id @default(uuid())
+  content String
+
+  attemptId String
+  attempt   Attempt @relation(fields: [attemptId], references: [id])
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model UserLike {
+  id String @id @default(uuid())
+
+  targetUserId String
+  targetUser   User   @relation("ReceivedUserLikes", fields: [targetUserId], references: [id])
+
+  userId String
+  user   User   @relation("GivenUserLikes", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([targetUserId, userId])
+}
+
+model LearningContent {
+  id               String       @id @default(uuid())
+  title            String
+  type             LearningType
+  description      String
+  example          String?
+  thinkingQuestion String?
+
+  progress LearningProgress[]
+
+  createdAt DateTime @default(now())
+}
+
+enum LearningType {
+  CONCEPT
+  PRINCIPLE
+  CASE
+}
+
+model LearningProgress {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  contentId String
+  content   LearningContent @relation(fields: [contentId], references: [id])
+
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, contentId])
+}
+
+model Challenge {
+  id    String @id @default(uuid())
+  title String
+
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id])
+
+  startAt DateTime
+  endAt   DateTime
+
+  attempts ChallengeAttempt[]
+
+  createdAt DateTime @default(now())
+}
+
+model ChallengeAttempt {
+  id String @id @default(uuid())
+
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+
+  attemptId String
+  attempt   Attempt @relation(fields: [attemptId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([challengeId, attemptId])
+}
